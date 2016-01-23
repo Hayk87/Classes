@@ -1,16 +1,13 @@
 <?php 
-
 	class Database
 	{
 		private $connect;
-
 		// Initializ PDO and connect Database
 		public function __construct($host, $db, $user, $password)
 		{
-			$connect = "mysql:host=".$host.";dbname=".$db.";";
+			$connect = "mysql:host=".$host.";dbname=".$db.";charset=utf8";
 			$this->connect = new PDO($connect,$user,$password);
 		} 
-
 		// Dinamic Insert Function
 		/*
 		* Arguments
@@ -53,14 +50,13 @@
 				{
 					echo "<h3>ERROR IN QUERY: Syntax error in Field(s)</h3>";die;
 				}
-				return true;
+				return $this->connect->lastInsertId();
 			}
 			else
 			{
 				echo "<h3>ERROR-ARRAY: 2-th argument must be ARRAY and NOT EMPTY !</h3>";die;
 			}
 		}
-
 		// Dinamic Select Function
 		/*
 		* Arguments
@@ -71,12 +67,14 @@
 		* 5 - AND | OR , default AND
 		* return Result and Count-Result
 		*/
-		public function getFromDb($table, $sort = array('sort' => array('', '')), 
-			$limit = array( 'limit' => array(0,0) ), 
-			$where = array(), 
-			$if = 'AND')
+		public function getFromDb($table,$where = array(),$sort = array('', ''),$limit = array(0,0) , $if = 'AND')
 		{
 			$query = "SELECT * FROM $table ";
+			if(!empty($where['ml']) && $where['ml'] == 1)
+			{
+				$query .= "LEFT JOIN ".$table."_data ON ".$table.".".$table."_id"."=".$table."_data.".$table."_data_self_id ";
+				unset($where['ml']);
+			}
 			if(!empty($where))
 			{
 				$query .= "WHERE ";
@@ -95,24 +93,29 @@
 				}
 			}
 			
-			if(!empty($sort['sort'][0]))
+			if(!empty($sort[0]) && !empty($sort[1]))
 			{
-				$query .= " ORDER BY ".$sort['sort'][0]." ".$sort['sort'][1];
+				$query .= " ORDER BY ".$sort[0]." ".$sort[1];
 			}
-			if(!empty($limit['limit'][0]) && $limit['limit'][0] > 0 && !empty($limit['limit'][1]) && $limit['limit'][1] > 0)
+			elseif(!empty($sort[0]))
 			{
-				$query .= " LIMIT ".$limit['limit'][1].", ".$limit['limit'][0];
+				$query .= " ORDER BY ".$sort[0]." ASC";
 			}
-			elseif($limit['limit'][0] > 0)
+
+			if(!empty($limit[0]) && !empty($limit[1]))
 			{
-				$query .= " LIMIT ".$limit['limit'][0];
+				$query .= " LIMIT ".$limit[0].", ".$limit[1];
 			}
+			elseif(!empty($limit[0]))
+			{
+				$query .= " LIMIT ".$limit[0];
+			}
+			//print_r($query);die;
 			$get = $this->connect->query($query);
 			$result['result'] = $get->fetchAll();
 			$result['count'] = $get->rowCount();
 			return $result;
 		}
-
 		// Dinamic Update Function
 		/*
 		* Arguments
@@ -164,7 +167,6 @@
 				return 0;
 			}
 		}
-
 		// Dinamic Delete Function
 		/*
 		* Arguments
@@ -184,13 +186,13 @@
 				{
 					if($index == count($where))
 					{
-						$query .= $field." = '".$content."'";
+						$query .= $field." = '".$content."'"; 
 					}
 					else
 					{
 						$query .= $field." = '".$content."' $if ";
 						$index ++;
-					}
+					} 
 				}
 			}
 			if( count( $this->connect->query($query) ) > 0 )
@@ -202,10 +204,52 @@
 				return 0;
 			}
 		}
-
 		// Some query
 		public function someQuery($query)
 		{
 			return $this->connect->query($query);
 		}
+		// END Some query 
+
+		// Join function
+		/*
+			join( 'users','LEFT',array(array('phones','phones.phone_user_id'='users.user_id')) )
+		*/
+		public function join( $table,$position = '',$ON = array(),$where = array(),$if='AND' )
+		{
+			$query = "SELECT * FROM $table";
+			if(is_array($ON) && !empty($ON))
+			{
+				foreach ($ON as $key => $item) 
+				{
+					if(is_array($item) && !empty($item))
+					{
+						$query .= " $position JOIN $item[0] ON $item[1] = $item[2]";
+					}
+				}
+			}
+			if(!empty($where))
+			{
+				$query .= " WHERE ";
+				$countWhere = count($where);
+				$index = 0;
+				foreach ($where as $field => $content) 
+				{
+					if($index == ($countWhere-1))
+					{
+						$query .= $field."='".$content."'";
+					}
+					else
+					{
+						$query .= $field."='".$content."' $if ";
+						$index++;
+					}
+					
+				}
+			}
+			$Query = $this->connect->query($query);
+			$result = $Query->fetchAll();
+			return $result;
+		}
+		// END Join function
 	}
