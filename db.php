@@ -213,9 +213,9 @@
 
 		// Join function
 		/*
-			join( 'users','LEFT',array(array('phones','phones.phone_user_id'='users.user_id')) )
+			join( 'users','LEFT',array(array('phones','phones.phone_user_id','users.user_id')) )
 		*/
-		public function join( $table,$position = '',$ON = array(),$where = array(),$if='AND' )
+		public function join( $table,$position = '',$ON = array(),$where = array(),$if = 'AND' )
 		{
 			$query = "SELECT * FROM $table";
 			if(is_array($ON) && !empty($ON))
