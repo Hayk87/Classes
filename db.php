@@ -67,7 +67,7 @@
 		* 5 - AND | OR , default AND
 		* return Result and Count-Result
 		*/
-		public function getFromDb($table,$fields,$where = array(),$sort = array('', ''),$limit = array(0,0) , $if = 'AND')
+		public function getFromDb($table,$fields = "*",$where = array(),$sort = array('', ''),$limit = array(0,0) , $if = 'AND')
 		{
 			$query = "SELECT $fields FROM $table ";
 			if(!empty($where['ml']) && $where['ml'] == 1)
