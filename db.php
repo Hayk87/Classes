@@ -67,7 +67,7 @@
 		* 5 - AND | OR , default AND
 		* return Result and Count-Result
 		*/
-		public function getFromDb($table,$fields = "*",$where = array(),$sort = array('', ''),$limit = array(0,0) , $if = 'AND')
+		public function getFromDb($table,$fields = "*",$where = array(),$sort = array('', 'ASC'),$limit = array(0,0) , $if = 'AND')
 		{
 			$query = "SELECT $fields FROM $table ";
 			if(!empty($where['ml']) && $where['ml'] == 1)
@@ -215,7 +215,7 @@
 		/*
 			join( 'users','LEFT',array(array('phones','phones.phone_user_id','users.user_id')) )
 		*/
-		public function join( $table,$position = '',$ON = array(),$where = array(),$if = 'AND' )
+		public function join( $table, $position = '', $ON = array(), $where = array(), $sort = array('','ASC'), $limit = array(0,0), $if = 'AND' )
 		{
 			$query = "SELECT * FROM $table";
 			if(is_array($ON) && !empty($ON))
@@ -246,6 +246,18 @@
 					}
 					
 				}
+			}
+			if(!empty($sort[0]))
+			{
+				$query .= " ORDER BY ".$sort[0]." ".$sort[1];
+			}
+			if(!empty($limit[0]) && !empty($limit[1]))
+			{
+				$query .= " LIMIT ".$limit[0].", ".$limit[1];
+			}
+			elseif(!empty($limit[0]))
+			{
+				$query .= " LIMIT ".$limit[0];
 			}
 			$Query = $this->connect->query($query);
 			$result = $Query->fetchAll();
