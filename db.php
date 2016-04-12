@@ -338,4 +338,29 @@
 			return $parent_categories;
 		}
 		// END
+
+		// $data tree array from $this->getChiled
+		// $tableName - is Table name
+		// $url - base url
+		// $langCode - language code, example: /en
+		public function getUlLi($data,$tableName,$url,$langCode = ''){
+			$content = '<ul>';
+			foreach($data as $key => $item){
+				$content .= '<li>';
+				$link = $langCode.$url.$item[$tableName.'_alias'].'/';
+				$content .= '<a href="'.$link.'">'.$item[$tableName.'_ml_title'].'</a>';
+				if(!empty($item['childs'])){
+					$content .= self::getUlLi($item['childs'],$tableName,$link);
+				}
+				$content .= '</li>';
+			}
+			$content .= '</ul>';
+			return $content;
+		}
+		// END
 	}
+/*
+Table syntax:
+table` menu (menu_id, menu_active, menu_alias, menu_position, ...)
+table` menu_ml (menu_ml_self_id, menu_ml_lng_id, menu_ml_title, menu_ml_content ...)
+*/
