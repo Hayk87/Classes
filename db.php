@@ -1,12 +1,15 @@
 <?php 
 	class Database
 	{
+		private $dir = "";
 		private $connect;
 		// Initializ PDO and connect Database
-		public function __construct($host, $db, $user, $password)
+		public function __construct($host, $db, $user, $password, $timezone = 'Asia/Yerevan')
 		{
+			date_default_timezone_set($timezone);
 			$connect = "mysql:host=".$host.";dbname=".$db.";charset=utf8";
 			$this->connect = new PDO($connect,$user,$password);
+			$this->connect->beginTransaction();
 		} 
 		// Dinamic Insert Function
 		/*
@@ -14,7 +17,7 @@
 		* 1 - Table name
 		* 2 - Insert datas asoc-array ['field' => 'content']
 		*/
-		public function register($table, $data)
+		public function Create($table, $data = array())
 		{
 			if( is_array($data) && !empty($data))
 			{
@@ -45,16 +48,18 @@
 						$index ++;
 					}
 				}
-				$result = $this->connect->query($query);
-				if($result == null)
+				$answer = $this->connect->query($query);
+				if(!$answer)
 				{
-					echo "<h3>ERROR IN QUERY: Syntax error in Field(s)</h3>";die;
+					$content = "ERROR IN INSERT QUERY: ".$query;
+					file_put_contents($this->dir.date('Y.m.d.h.i.s').'.txt', $content);
+					return null;
 				}
 				return $this->connect->lastInsertId();
 			}
 			else
 			{
-				echo "<h3>ERROR-ARRAY: 2-th argument must be ARRAY and NOT EMPTY !</h3>";die;
+				return null;
 			}
 		}
 		// Dinamic Select Function
@@ -67,7 +72,7 @@
 		* 5 - AND | OR , default AND
 		* return Result and Count-Result
 		*/
-		public function getFromDb($table,$fields = "*",$where = array(),$sort = array('', 'ASC'),$limit = array(0,0) , $if = 'AND')
+		public function Read($table,$fields = "*",$where = array(),$sort = array('', 'ASC'),$limit = array(0,0) , $if = 'AND')
 		{
 			if(is_array($fields)){
 				$Fieldes = '';
@@ -84,7 +89,7 @@
 			$query = "SELECT $fields FROM $table ";
 			if(!empty($where['ml']) && $where['ml'] == 1)
 			{
-				$query .= "LEFT JOIN ".$table."_data ON ".$table.".".$table."_id"."=".$table."_data.".$table."_data_self_id ";
+				$query .= "LEFT JOIN ".$table."_ml ON ".$table.".".$table."_id"."=".$table."_ml.".$table."_ml_self_id ";
 				unset($where['ml']);
 			}
 			if(!empty($where))
@@ -123,9 +128,14 @@
 				$query .= " LIMIT ".$limit[0];
 			}
 			//print_r($query);die;
-			$get = $this->connect->query($query);
-			$result['result'] = $get->fetchAll(PDO::FETCH_ASSOC);
-			$result['count'] = $get->rowCount();
+			$answer = $this->connect->query($query);
+			if(!$answer){
+				$content = "ERROR IN SELECT QUERY: ".$query;
+				file_put_contents($this->dir.date('Y.m.d.h.i.s').'.txt', $content);
+				return null;
+			}
+			$result['rows'] = $answer->fetchAll(PDO::FETCH_ASSOC);
+			$result['count'] = $answer->rowCount();
 			return $result;
 		}
 		// Dinamic Update Function
@@ -137,7 +147,7 @@
 		* 4 - AND | OR , default 'AND'
 		* return 1 | 0
 		*/
-		public function updateInDb($table, $datas, $where = array(), $if = "AND")
+		public function Update($table, $datas, $where = array(), $if = "AND")
 		{
 			$query = "UPDATE $table SET ";
 			$index = 1;
@@ -170,14 +180,13 @@
 					}
 				}
 			}
-			if( count( $this->connect->query($query) ) > 0 )
-			{
-				return 1;
+			$answer = $this->connect->query($query);
+			if(!$answer){
+				$content = "ERROR IN UPDATE QUERY: ".$query;
+				file_put_contents($this->dir.date('Y.m.d.H.i.s').'.txt', $content);
+				return null;
 			}
-			else
-			{
-				return 0;
-			}
+			return 1;
 		}
 		// Dinamic Delete Function
 		/*
@@ -187,7 +196,7 @@
 		* 3 - AND | OR , default 'AND'
 		* return 1 | 0
 		*/
-		public function deleteInDb($table, $where = array(), $if = "AND")
+		public function Delete($table, $where = array(), $if = "AND")
 		{
 			$query = "DELETE FROM $table";
 			if(!empty($where))
@@ -207,27 +216,38 @@
 					} 
 				}
 			}
-			if( count( $this->connect->query($query) ) > 0 )
-			{
-				return 1;
+			$answer = $this->connect->query($query);
+			if(!$answer){
+				$content = "ERROR IN DELETE QUERY: ".$query;
+				file_put_contents($this->dir.date('Y.m.d.h.i.s').'.txt', $content);
+				return null;
 			}
-			else
-			{
-				return 0;
-			}
+			return 1;
 		}
 		// Some query
-		public function someQuery($query)
+		public function Request($query)
 		{
 			return $this->connect->query($query);
 		}
 		// END Some query 
 
+		// commit
+		public function Commit(){
+			$this->connect->Commit();
+		}
+		// END commit
+
+		// rollBack
+		public function RollBack(){
+			$this->connect->rollBack();
+		}
+		// END rollBack
+
 		// Join function
 		/*
 			join( 'users','LEFT',array(array('phones','phones.phone_user_id','users.user_id')) )
 		*/
-		public function join( $table,$select, $position = '', $ON = array(), $where = array(), $sort = array('','ASC'), $limit = array(0,0), $if = 'AND' )
+		public function Join( $table,$select, $position = '', $ON = array(), $where = array(), $sort = array('','ASC'), $limit = array(0,0), $if = 'AND' )
 		{
 			$query = "SELECT $select FROM $table";
 			if(is_array($ON) && !empty($ON))
@@ -271,7 +291,12 @@
 			{
 				$query .= " LIMIT ".$limit[0];
 			}
-			$Query = $this->connect->query($query);
+			$answer = $this->connect->query($query);
+			if(!$answer){
+				$content = "ERROR IN JOIN QUERY: ".$query;
+				file_put_contents($this->dir.date('Y.m.d.h.i.s').'.txt', $content);
+				return null;
+			}
 			$result = $Query->fetchAll(PDO::FETCH_ASSOC);
 			return $result;
 		}
